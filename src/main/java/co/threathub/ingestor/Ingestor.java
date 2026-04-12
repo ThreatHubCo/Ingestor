@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -95,6 +97,9 @@ public class Ingestor {
         // Load and validate config.properties
         this.configFile = new ConfigFile();
         validateConfig(configFile);
+
+        // Ensure scripts and templates directories exist
+        ensureDirectoriesExist();
 
         // Connect to database
         connectToDatabase(configFile);
@@ -176,6 +181,15 @@ public class Ingestor {
                 configFile.getPassword() == null || configFile.getPassword().isEmpty()
         ) {
             throw new RuntimeException("Failed to load config. Please ensure all values are filled out correctly.");
+        }
+    }
+
+    public static void ensureDirectoriesExist() {
+        try {
+            Files.createDirectories(Path.of("scripts"));
+            Files.createDirectories(Path.of("templates"));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create required directories", e);
         }
     }
 

@@ -232,10 +232,9 @@ async function runHaloEscalation() {
 
 
 async function test() {
-    const ticket = await th.tickets.lookup("10113");
-    console.log(Object.keys(ticket))
+
 }
 
 test();
-console.log("Running...");
-runHaloEscalation();
+//console.log("Running...");
+//runHaloEscalation();
