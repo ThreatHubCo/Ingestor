@@ -1,5 +1,6 @@
 package co.threathub.ingestor;
 
+import co.threathub.ingestor.js.JSManager;
 import com.zaxxer.hikari.HikariDataSource;
 import co.threathub.ingestor.defender.DefenderClient;
 import co.threathub.ingestor.defender.service.SoftwareService;
@@ -31,6 +32,7 @@ public class Ingestor {
     private static Ingestor INSTANCE;
 
     private final HikariDataSource dataSource = new HikariDataSource();
+    private final HikariDataSource reportDataSource = new HikariDataSource();
     private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
 
     private CustomerRepository customerRepository;
@@ -62,6 +64,8 @@ public class Ingestor {
     private DeviceCatalogSyncTask deviceCatalogSyncTask;
     private DeviceCleanupTask deviceCleanupTask;
 
+    private ConfigFile configFile;
+
     public static void main(String[] args) {
         try {
             System.out.println("  _______ _                    _   _    _       _       _____                       _               ");
@@ -89,11 +93,12 @@ public class Ingestor {
         INSTANCE = this;
 
         // Load and validate config.properties
-        ConfigFile configFile = new ConfigFile();
+        this.configFile = new ConfigFile();
         validateConfig(configFile);
 
         // Connect to database
         connectToDatabase(configFile);
+        connectToDatabaseReportUser(configFile);
 
         // Init logging
         this.backendLogRepository = new BackendLogRepository(dataSource);
@@ -132,6 +137,8 @@ public class Ingestor {
         this.haloSyncTask = new HaloSyncTask(this);
         this.deviceCleanupTask = new DeviceCleanupTask(this);
 
+        new JSManager(this).test();
+
         JobWorker worker = new JobWorker(this);
 
         // Run in a separate thread so main thread is free
@@ -154,6 +161,13 @@ public class Ingestor {
         dataSource.setUsername(configFile.getUsername());
         dataSource.setPassword(configFile.getPassword());
         dataSource.setMaxLifetime(configFile.getMaxLifetime());
+    }
+
+    private void connectToDatabaseReportUser(ConfigFile configFile) {
+        reportDataSource.setJdbcUrl(configFile.getUrl());
+        reportDataSource.setUsername(configFile.getReportUserUsername());
+        reportDataSource.setPassword(configFile.getReportUserPassword());
+        reportDataSource.setMaxLifetime(configFile.getMaxLifetime());
     }
 
     private void validateConfig(ConfigFile configFile) {

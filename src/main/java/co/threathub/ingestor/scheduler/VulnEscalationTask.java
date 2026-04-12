@@ -105,7 +105,7 @@ public class VulnEscalationTask implements ITask {
 
                     Logger.debug(String.format("Escalating %s (%s)", pair.getSoftware().getName(), ++i), customerId);
 
-                    haloClient.createTicket(pair.getCustomer(), pair.getSoftware(), publicExploit, cveCount, deviceCount, highestCveSeverity);
+//                    haloClient.createTicket(pair.getCustomer(), pair.getSoftware(), publicExploit, cveCount, deviceCount, highestCveSeverity);
                 }
             }
         } catch (Exception ex) {

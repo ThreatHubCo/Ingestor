@@ -58,6 +58,10 @@ public final class Logger {
         log("WARN", message, null, null);
     }
 
+    public static void error(String message) {
+        log("ERROR", message, null, null);
+    }
+
     public static void error(String message, Throwable t) {
         log("ERROR", message, t, null);
     }

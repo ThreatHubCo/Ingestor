@@ -1,4 +1,4 @@
-package co.threathub.ingestor.exception;
+package co.threathub.ingestor.repository.exception;
 
 public class DatabaseException extends RuntimeException {
 

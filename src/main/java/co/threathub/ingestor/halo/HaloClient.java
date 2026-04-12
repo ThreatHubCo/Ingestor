@@ -148,7 +148,7 @@ public class HaloClient {
 
         HttpResponse<String> response = Utils.HTTP.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() == 404) {
+        if (response.statusCode() == 404 || response.statusCode() == 400) {
             return null;
         }
         if (response.statusCode() != 200) {
@@ -157,22 +157,17 @@ public class HaloClient {
         return Utils.GSON.fromJson(response.body(), HaloTicket.class);
     }
 
-    public void createTicket(Customer customer, Software software, boolean publicExploit, int cveCount, int deviceCount, String highestCveSeverity) throws Exception {
+    // TODO: Strip out customer and software requirement from here
+    public void createTicket(Customer customer, Software software, String templateType, Map<String, Object> model) throws Exception {
         Map<ConfigKey, ConfigEntry> config = configRepository.getAll();
         String accessToken = authenticate(config);
+        String htmlBody;
 
-        ConfigEntry siteUrlEntry = config.get(ConfigKey.SITE_URL);
-
-        Map<String, Object> model = new HashMap<>();
-        model.put("software", software);
-        model.put("customer", customer);
-        model.put("publicExploit", publicExploit);
-        model.put("cveCount", cveCount);
-        model.put("deviceCount", deviceCount);
-        model.put("softwareLink", siteUrlEntry != null ? siteUrlEntry.getValue() + "/software/" + software.getId() + "?customer=" + customer.getId() : null);
-        model.put("highestCveSeverity", highestCveSeverity);
-
-        String htmlBody = templateManager.renderVulnerabilityTicket(model);
+        if (templateType.equals("SOFTWARE_ESCALATION")) {
+            htmlBody = templateManager.renderVulnerabilityTicket(model);
+        } else {
+            throw new RuntimeException("Unknown template type");
+        }
 
         htmlBody = htmlBody
                 .replaceAll("[\\n\\r\\t]", "")
@@ -214,6 +209,8 @@ public class HaloClient {
         // Parse Halo response
         JsonObject responseJson = JsonParser.parseString(response.body()).getAsJsonObject();
         String haloTicketId = responseJson.get("entity_id").getAsString();
+
+        Logger.info("TICKET CREATED: " + haloTicketId);
 
         // Save to local DB
         remediationRepository.insertTicket(new RemediationTicket(
