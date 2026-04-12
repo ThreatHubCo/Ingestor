@@ -11,17 +11,29 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
 public class JSManager {
+    private static final String[] SCRIPT_FILES = {"test.js"};
+
     private final Map<ScriptType, String> loadedScripts = new HashMap<>();
     private final Context context;
 
     public JSManager(Ingestor ingestor) {
+        try {
+            extractScripts();
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to extract scripts", ex);
+        }
+
         HostAccess hostAccess = HostAccess.newBuilder(HostAccess.NONE)
                 .allowAccessAnnotatedBy(HostAccess.Export.class)
                 .allowPublicAccess(true)
@@ -48,47 +60,60 @@ public class JSManager {
                 "http", new HttpApi()
         )));
 
-//        loadScript(ScriptType.SOFTWARE_ESCALATION, "software-escalation.js");
+        loadScript(ScriptType.SOFTWARE_ESCALATION, "test.js");
+        executeScript(ScriptType.SOFTWARE_ESCALATION);
     }
 
-    public void test() {
-        InputStream is = JSManager.class.getClassLoader().getResourceAsStream("test.js");
+    private void extractScripts() throws IOException {
+        Path targetDir = Paths.get("scripts");
 
-        if (is == null) {
-            throw new RuntimeException("File not found!");
+        if (!Files.exists(targetDir)) {
+            Files.createDirectories(targetDir);
         }
 
-        try {
-            String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            context.eval("js", content);
-        } catch (Exception ex) {
-            Logger.warn("Script error: " + ex.getMessage());
+        ClassLoader classLoader = JSManager.class.getClassLoader();
+
+        for (String fileName : SCRIPT_FILES) {
+            Path outputPath = targetDir.resolve(fileName);
+
+            if (Files.exists(outputPath)) {
+                continue;
+            }
+
+            try (InputStream is = classLoader.getResourceAsStream("scripts/" + fileName)) {
+                if (is == null) {
+                    throw new FileNotFoundException("Script not found in resources: " + fileName);
+                }
+
+                Files.createDirectories(outputPath.getParent());
+                Files.copy(is, outputPath);
+            }
         }
     }
 
     private void loadScript(ScriptType type, String fileName) {
-        String path = "scripts/" + fileName;
+        Path path = Paths.get("scripts", fileName);
 
-        try (InputStream is = JSManager.class.getClassLoader().getResourceAsStream(path)) {
-            if (is == null) {
-                throw new RuntimeException("Script not found: " + path);
-            }
+        if (!Files.exists(path)) {
+            throw new RuntimeException("Script not found: " + path.toAbsolutePath());
+        }
 
-            String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            String content = Files.readString(path, StandardCharsets.UTF_8);
 
             loadedScripts.put(type, content);
 
-            Logger.info("Script loaded into memory: " + type);
+            Logger.info("Script loaded from filesystem: " + fileName + " (" + type.name() + ")");
         } catch (IOException ex) {
             Logger.warn("Script load error (" + fileName + "): " + ex.getMessage());
         }
     }
 
-    public void executeScript(ScriptType type, String fileName) {
+    public void executeScript(ScriptType type) {
         String script = loadedScripts.get(type);
 
         if (script == null) {
-            throw new RuntimeException("Script not loaded: " + fileName + " (" + type.name() + ")");
+            throw new RuntimeException("Script not loaded: " + type.name());
         }
         context.eval("js", script);
     }

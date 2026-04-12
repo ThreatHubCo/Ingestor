@@ -57,6 +57,7 @@ public class Ingestor {
     private ReportingService reportingService;
 
     private TemplateManager templateManager;
+    private JSManager scriptManager;
 
     private VulnCatalogSyncTask vulnCatalogSyncTask;
     private VulnCustomerExposureSyncTask vulnExposureSyncTask;
@@ -142,7 +143,7 @@ public class Ingestor {
         this.haloSyncTask = new HaloSyncTask(this);
         this.deviceCleanupTask = new DeviceCleanupTask(this);
 
-        new JSManager(this).test();
+        this.scriptManager = new JSManager(this);
 
         JobWorker worker = new JobWorker(this);
 

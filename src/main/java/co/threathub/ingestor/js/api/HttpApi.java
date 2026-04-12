@@ -69,10 +69,7 @@ public class HttpApi {
 
             headers.forEach(builder::header);
 
-            HttpResponse<String> response = client.send(
-                    builder.build(),
-                    HttpResponse.BodyHandlers.ofString()
-            );
+            HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
 
             Map<String, Object> result = new HashMap<>();
             result.put("status", response.statusCode());
