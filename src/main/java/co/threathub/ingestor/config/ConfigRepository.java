@@ -1,7 +1,7 @@
 package co.threathub.ingestor.config;
 
 import com.zaxxer.hikari.HikariDataSource;
-import co.threathub.ingestor.exception.DatabaseException;
+import co.threathub.ingestor.repository.exception.DatabaseException;
 import lombok.RequiredArgsConstructor;
 
 import java.sql.*;

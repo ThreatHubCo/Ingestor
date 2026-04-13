@@ -1,5 +1,6 @@
 package co.threathub.ingestor;
 
+import co.threathub.ingestor.js.JSManager;
 import com.zaxxer.hikari.HikariDataSource;
 import co.threathub.ingestor.defender.DefenderClient;
 import co.threathub.ingestor.defender.service.SoftwareService;
@@ -20,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -53,6 +56,7 @@ public class Ingestor {
     private ReportingService reportingService;
 
     private TemplateManager templateManager;
+    private JSManager scriptManager;
 
     private VulnCatalogSyncTask vulnCatalogSyncTask;
     private VulnCustomerExposureSyncTask vulnExposureSyncTask;
@@ -61,6 +65,8 @@ public class Ingestor {
     private VulnEscalationTask vulnEscalationTask;
     private DeviceCatalogSyncTask deviceCatalogSyncTask;
     private DeviceCleanupTask deviceCleanupTask;
+
+    private ConfigFile configFile;
 
     public static void main(String[] args) {
         try {
@@ -89,8 +95,11 @@ public class Ingestor {
         INSTANCE = this;
 
         // Load and validate config.properties
-        ConfigFile configFile = new ConfigFile();
+        this.configFile = new ConfigFile();
         validateConfig(configFile);
+
+        // Ensure scripts and templates directories exist
+        ensureDirectoriesExist();
 
         // Connect to database
         connectToDatabase(configFile);
@@ -132,6 +141,8 @@ public class Ingestor {
         this.haloSyncTask = new HaloSyncTask(this);
         this.deviceCleanupTask = new DeviceCleanupTask(this);
 
+        this.scriptManager = new JSManager(this);
+
         JobWorker worker = new JobWorker(this);
 
         // Run in a separate thread so main thread is free
@@ -162,6 +173,15 @@ public class Ingestor {
                 configFile.getPassword() == null || configFile.getPassword().isEmpty()
         ) {
             throw new RuntimeException("Failed to load config. Please ensure all values are filled out correctly.");
+        }
+    }
+
+    public static void ensureDirectoriesExist() {
+        try {
+            Files.createDirectories(Path.of("scripts"));
+            Files.createDirectories(Path.of("templates"));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create required directories", e);
         }
     }
 

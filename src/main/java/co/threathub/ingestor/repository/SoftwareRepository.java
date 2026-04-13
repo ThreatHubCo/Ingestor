@@ -1,6 +1,8 @@
 package co.threathub.ingestor.repository;
 
-import co.threathub.ingestor.exception.DatabaseException;
+import co.threathub.ingestor.model.Customer;
+import co.threathub.ingestor.model.Software;
+import co.threathub.ingestor.repository.exception.DatabaseException;
 import com.zaxxer.hikari.HikariDataSource;
 import co.threathub.ingestor.defender.model.individual.DefenderMachineVulnerability;
 import co.threathub.ingestor.defender.model.individual.DefenderSoftware;
@@ -15,6 +17,22 @@ import java.util.HashMap;
 public class SoftwareRepository {
     private final HikariDataSource dataSource;
 
+    public Software getSoftwareById(int id) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM software WHERE id = ?")) {
+
+            ps.setInt(1, id);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Software.of(rs);
+                }
+            }
+            return null;
+        } catch (SQLException ex) {
+            throw new DatabaseException("Failed to fetch software with ID " + id, ex);
+        }
+    }
 
     /**
      * Insert or update software from the Defender API in the database.

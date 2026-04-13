@@ -1,6 +1,6 @@
 package co.threathub.ingestor.repository;
 
-import co.threathub.ingestor.exception.DatabaseException;
+import co.threathub.ingestor.repository.exception.DatabaseException;
 import com.zaxxer.hikari.HikariDataSource;
 import co.threathub.ingestor.model.Customer;
 import co.threathub.ingestor.model.RemediationTicket;

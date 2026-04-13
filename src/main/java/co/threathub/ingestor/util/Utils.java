@@ -20,7 +20,10 @@ import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 public class Utils {
-    public static final HttpClient HTTP = HttpClient.newHttpClient();
+    public static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
+
     public static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .serializeNulls()
