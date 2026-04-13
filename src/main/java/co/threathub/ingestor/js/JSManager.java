@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class JSManager {
-    private static final String[] SCRIPT_FILES = {"scripts/test.js"};
+    private static final String[] SCRIPT_FILES = {"software-escalation.js"};
 
     private final Map<ScriptType, String> loadedScripts = new HashMap<>();
     private final Context context;
@@ -60,8 +60,7 @@ public class JSManager {
                 "http", new HttpApi()
         )));
 
-        loadScript(ScriptType.SOFTWARE_ESCALATION, "scripts/test.js");
-        executeScript(ScriptType.SOFTWARE_ESCALATION);
+        loadScript(ScriptType.SOFTWARE_ESCALATION, "software-escalation.js");
     }
 
     private void extractScripts() throws IOException {
@@ -103,7 +102,7 @@ public class JSManager {
 
             loadedScripts.put(type, content);
 
-            Logger.info("Script loaded from filesystem: " + fileName + " (" + type.name() + ")");
+            Logger.info("Script loaded from file system: " + fileName + " (" + type.name() + ")");
         } catch (IOException ex) {
             Logger.warn("Script load error (" + fileName + "): " + ex.getMessage());
         }

@@ -41,7 +41,7 @@ public class TicketApi {
                 }
             }
 
-//            ingestor.getHaloClient().createTicket(customer, software, "SOFTWARE_ESCALATION", model);
+            ingestor.getHaloClient().createTicket(customer, software, "SOFTWARE_ESCALATION", model);
         } catch (Exception ex) {
             throw new ScriptException("Failed to create ticket: " + ex.getMessage(), ex);
         }
