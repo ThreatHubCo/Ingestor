@@ -24,15 +24,9 @@ public class SqlApi {
 
     @HostAccess.Export
     public Value query(String sql, List<Object> params) {
-        boolean unrestrictedSql = ingestor.getConfigFile().isAllowUnrestrictedSqlInJs();
         String normalized = sql.trim().toLowerCase();
-        HikariDataSource dataSource = unrestrictedSql ? ingestor.getDataSource() : ingestor.getReportDataSource();
 
-        if (!unrestrictedSql && !normalized.startsWith("select")) {
-            throw new ScriptException("Only SELECT queries are allowed");
-        }
-
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = ingestor.getDataSource().getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             if (params != null) {
                 for (int i = 0; i < params.size(); i++) {
                     ps.setObject(i + 1, params.get(i));

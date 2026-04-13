@@ -34,7 +34,6 @@ public class Ingestor {
     private static Ingestor INSTANCE;
 
     private final HikariDataSource dataSource = new HikariDataSource();
-    private final HikariDataSource reportDataSource = new HikariDataSource();
     private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
 
     private CustomerRepository customerRepository;
@@ -104,7 +103,6 @@ public class Ingestor {
 
         // Connect to database
         connectToDatabase(configFile);
-        connectToDatabaseReportUser(configFile);
 
         // Init logging
         this.backendLogRepository = new BackendLogRepository(dataSource);
@@ -167,13 +165,6 @@ public class Ingestor {
         dataSource.setUsername(configFile.getUsername());
         dataSource.setPassword(configFile.getPassword());
         dataSource.setMaxLifetime(configFile.getMaxLifetime());
-    }
-
-    private void connectToDatabaseReportUser(ConfigFile configFile) {
-        reportDataSource.setJdbcUrl(configFile.getUrl());
-        reportDataSource.setUsername(configFile.getReportUserUsername());
-        reportDataSource.setPassword(configFile.getReportUserPassword());
-        reportDataSource.setMaxLifetime(configFile.getMaxLifetime());
     }
 
     private void validateConfig(ConfigFile configFile) {

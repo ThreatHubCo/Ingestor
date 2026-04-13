@@ -17,9 +17,6 @@ public class ConfigFile {
     private String password;
     private long maxLifetime;
     private String defenderBaseApiUrl;
-    private boolean allowUnrestrictedSqlInJs;
-    private String reportUserUsername;
-    private String reportUserPassword;
 
     public ConfigFile() {
         Path appDirFile = Path.of(System.getProperty("user.dir"), PROPERTIES_FILE_NAME);
@@ -45,9 +42,6 @@ public class ConfigFile {
             this.password = prop.getProperty("database.password");
             this.maxLifetime = Long.parseLong(prop.getProperty("database.maxLifetime", "600000"));
             this.defenderBaseApiUrl = prop.getProperty("defender.baseApiUrl", "https://api-eu3.securitycenter.microsoft.com");
-            this.allowUnrestrictedSqlInJs = Boolean.parseBoolean(prop.getProperty("js.allow-unrestricted-sql"));
-            this.reportUserUsername = prop.getProperty("database.reportUserUsername");
-            this.reportUserPassword = prop.getProperty("database.reportUserPassword");
         } catch (IOException ex) {
             throw new RuntimeException("Failed to load " + PROPERTIES_FILE_NAME, ex);
         }

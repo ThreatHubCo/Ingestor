@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class JSManager {
-    private static final String[] SCRIPT_FILES = {"test.js"};
+    private static final String[] SCRIPT_FILES = {"scripts/test.js"};
 
     private final Map<ScriptType, String> loadedScripts = new HashMap<>();
     private final Context context;
@@ -52,7 +52,7 @@ public class JSManager {
 
         Value bindings = context.getBindings("js");
 
-        bindings.putMember("th", ProxyObject.fromMap(Map.of(
+        bindings.putMember("api", ProxyObject.fromMap(Map.of(
                 "sql", new SqlApi(ingestor),
                 "config", new ConfigApi(ingestor),
                 "log", new LogApi(),
@@ -60,7 +60,7 @@ public class JSManager {
                 "http", new HttpApi()
         )));
 
-        loadScript(ScriptType.SOFTWARE_ESCALATION, "test.js");
+        loadScript(ScriptType.SOFTWARE_ESCALATION, "scripts/test.js");
         executeScript(ScriptType.SOFTWARE_ESCALATION);
     }
 

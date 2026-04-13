@@ -1,5 +1,5 @@
 function isConfigured() {
-    const config = th.config.getAll();
+    const config = api.config.getAll();
 
     return (
         config &&
@@ -33,7 +33,7 @@ async function findCandidates() {
         AND s.auto_ticket_escalation_enabled = TRUE
   `;
 
-    const rows = await th.sql.query(sql);
+    const rows = await api.sql.query(sql);
     const map = new Map();
 
     for (const r of rows) {
@@ -55,7 +55,7 @@ async function getActiveTicket(customerId, softwareId) {
         LIMIT 1
     `;
 
-    const rows = await th.sql.query(sql, [customerId, softwareId]);
+    const rows = await api.sql.query(sql, [customerId, softwareId]);
     return rows[0] || null;
 }
 
@@ -74,7 +74,7 @@ async function hasPublicExploit(customerId, softwareId) {
         LIMIT 1
     `;
 
-    const rows = await th.sql.query(sql, [softwareId, customerId]);
+    const rows = await api.sql.query(sql, [softwareId, customerId]);
     return rows.length > 0;
 }
 
@@ -93,7 +93,7 @@ async function getHighCriticalAge(customerId, softwareId) {
         AND d.last_seen_at >= NOW() - INTERVAL 30 DAY
     `;
 
-    const rows = await th.sql.query(sql, [softwareId, customerId]);
+    const rows = await api.sql.query(sql, [softwareId, customerId]);
     return daysBetween(rows?.[0]?.first_seen);
 }
 
@@ -114,7 +114,7 @@ async function getEscalatableCveCount(customerId, softwareId) {
           )
     `;
 
-    const rows = await th.sql.query(sql, [softwareId, customerId]);
+    const rows = await api.sql.query(sql, [softwareId, customerId]);
     return rows?.[0]?.vuln_count || 0;
 }
 
@@ -131,7 +131,7 @@ async function getAffectedDeviceCount(customerId, softwareId) {
           AND d.last_seen_at >= NOW() - INTERVAL 30 DAY
     `;
 
-    const rows = await th.sql.query(sql, [customerId, softwareId]);
+    const rows = await api.sql.query(sql, [customerId, softwareId]);
     return rows?.[0]?.device_count || 0;
 }
 
@@ -157,13 +157,13 @@ async function getHighestCveSeverity(customerId, softwareId) {
         LIMIT 1
     `;
 
-    const rows = await th.sql.query(sql, [softwareId, customerId]);
+    const rows = await api.sql.query(sql, [softwareId, customerId]);
     return rows?.[0]?.severity || null;
 }
 
 async function runHaloEscalation() {
     if (!isConfigured()) {
-        th.log.warn("Ticket system not configured");
+        api.log.warn("Ticket system not configured");
         return;
     }
 
@@ -177,11 +177,11 @@ async function runHaloEscalation() {
             const age = daysBetween(ticket.last_ticket_update_at);
 
             if (age > 14) {
-                await th.email.send({
-                    to: "support@example.com",
-                    subject: "Stale vulnerability ticket",
-                    body: `Ticket ${ticket.id} for ${software.name} (${customer.name}) has not been updated in over 14 days.`
-                });
+                // await api.email.send({
+                //     to: "support@example.com",
+                //     subject: "Stale vulnerability ticket",
+                //     body: `Ticket ${ticket.id} for ${software.name} (${customer.name}) has not been updated in over 14 days.`
+                // });
             }
 
             continue;
@@ -191,7 +191,7 @@ async function runHaloEscalation() {
         const isChromeOrEdge = name.includes("chrome") || name.includes("edge");
         const hcAge = await getHighCriticalAge(customer.id, software.id);
 
-        const siteUrl = await th.config.get("SITE_URL");
+        const siteUrl = await api.config.get("SITE_URL");
 
         const cveCount = await getEscalatableCveCount(customer.id, software.id);
         const deviceCount = await getAffectedDeviceCount(customer.id, software.id);
@@ -209,13 +209,13 @@ async function runHaloEscalation() {
        
         if (isChromeOrEdge) {
             if (hcAge !== null && hcAge >= 4) {
-                await th.tickets.create(customer.id, software.id, model);
+                await api.tickets.create(customer.id, software.id, model);
             }
             continue;
         }
 
         if (publicExploit) {
-            await th.tickets.create(customer.id, software.id, model);
+            await api.tickets.create(customer.id, software.id, model);
             continue;
         }
 
@@ -224,7 +224,7 @@ async function runHaloEscalation() {
         }
 
         if (hcAge !== null && hcAge >= 7) {
-            await th.tickets.create(customer.id, software.id, model);
+            await api.tickets.create(customer.id, software.id, model);
             continue;
         }
     }
