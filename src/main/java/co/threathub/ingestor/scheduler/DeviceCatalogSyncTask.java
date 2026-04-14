@@ -116,7 +116,7 @@ public class DeviceCatalogSyncTask implements ITask {
             if (machine.getComputerDnsName() == null || machine.getComputerDnsName().isEmpty()) {
                 continue;
             }
-            if (!machine.isAadJoined() && skipNonEntraJoinedDevices) {
+            if (!machine.isAadJoined() && skipNonEntraJoinedDevices && machine.getVmMetadata() == null) {
                 continue;
             }
             deviceRepository.insertDefenderDevice(customer.getId(), machine);

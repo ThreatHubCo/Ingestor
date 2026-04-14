@@ -3,15 +3,18 @@ package co.threathub.ingestor.scheduler;
 import co.threathub.ingestor.Ingestor;
 import co.threathub.ingestor.config.ConfigEntry;
 import co.threathub.ingestor.config.ConfigKey;
+import co.threathub.ingestor.defender.model.individual.DefenderMachine;
 import co.threathub.ingestor.job.JobHelper;
 import co.threathub.ingestor.job.model.NoOpScanJob;
 import co.threathub.ingestor.job.model.ScanJob;
 import co.threathub.ingestor.log.Logger;
+import co.threathub.ingestor.model.Customer;
 import co.threathub.ingestor.model.Device;
 import co.threathub.ingestor.util.Utils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.Connection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -61,22 +64,54 @@ public class DeviceCleanupTask implements ITask {
         }
 
         try (Connection conn = ingestor.getDataSource().getConnection()) {
-            List<Device> devices = ingestor.getDeviceRepository().getDevicesNotEntraJoined();
+            List<Device> dbDevices = ingestor.getDeviceRepository().getAllDevices();
+            Map<String, DefenderMachine> defenderLookup = new HashMap<>();
 
-            int total = devices.size();
+            for (Customer customer : ingestor.getCustomerRepository().getAllCustomers()) {
+                List<DefenderMachine> machines = ingestor.getDeviceService().fetchAllMachines(customer.getTenantId());
+
+                for (DefenderMachine machine : machines) {
+                    if (machine.getComputerDnsName() != null) {
+                        defenderLookup.put(
+                                machine.getComputerDnsName().toLowerCase(),
+                                machine
+                        );
+                    }
+                }
+            }
+
+            int total = dbDevices.size();
             int current = 0;
             int lastReported = 0;
 
-            for (Device device : devices) {
+            for (Device device : dbDevices) {
                 current++;
 
-                ingestor.getDeviceRepository().removeDevice(device.getId());
-                log.info("Removing device as not entra joined: {}", device.getDnsName());
+                if (device.getDnsName() == null) {
+                    continue;
+                }
+
+                DefenderMachine machine = defenderLookup.get(device.getDnsName().toLowerCase());
+                boolean shouldDelete = false;
+
+                if (machine == null) {
+                    shouldDelete = true;
+                } else {
+                    boolean isAadJoined = machine.isAadJoined();
+                    boolean hasVmMetadata = machine.getVmMetadata() != null;
+
+                    if (!isAadJoined && skipNonEntraJoinedDevices && !hasVmMetadata) {
+                        shouldDelete = true;
+                    }
+                }
+
+                if (shouldDelete) {
+                    ingestor.getDeviceRepository().removeDevice(device.getId());
+                    log.info("Removing device: {}", device.getDnsName());
+                }
 
                 int percent = (int) ((current / (double) total) * 100);
 
-                // Only update every 20% as this task will probably be over quickly there is no
-                // need to spam updates
                 if (percent >= lastReported + 20) {
                     lastReported = (percent / 20) * 20;
                     job.updateProgress(lastReported, "Cleanup " + lastReported + "% complete");

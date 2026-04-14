@@ -14,4 +14,13 @@ public class DefenderMachine implements IDefenderModel {
     private final String version;
     private final boolean isAadJoined;
     private final String aadDeviceId;
+    private final VmMetadata vmMetadata;
+
+    @Data
+    public static class VmMetadata {
+        private final String vmId;
+        private final String cloudProvider;
+        private final String resourceId;
+        private final String subscriptionId;
+    }
 }

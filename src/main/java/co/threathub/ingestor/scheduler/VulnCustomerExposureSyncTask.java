@@ -95,16 +95,13 @@ public class VulnCustomerExposureSyncTask implements ITask {
         // Fetch all devices from Defender and map
         List<DefenderMachine> machines = deviceService.fetchAllMachines(tenantId);
 
-        Map<String, DefenderMachine> machineMap =
-                machines.stream().collect(Collectors.toMap(
-                        DefenderMachine::getId, m -> m
-                ));
-
         ConfigEntry skipNonEntraJoinedDevicesEntry = config.get(ConfigKey.SKIP_NON_ENTRA_JOINED_DEVICES);
         boolean skipNonEntraJoinedDevices = skipNonEntraJoinedDevicesEntry == null || skipNonEntraJoinedDevicesEntry.getValue().equalsIgnoreCase("true");
 
         // Insert or update all devices in the database
         Logger.info("Processing " + machines.size() + " devices", customer.getId());
+
+        List<DefenderMachine> filtered = new ArrayList<>();
 
         for (DefenderMachine machine : machines) {
             // Ignore machines with blank names
@@ -112,15 +109,15 @@ public class VulnCustomerExposureSyncTask implements ITask {
                 continue;
             }
             // Ignore machines that aren't entra joined
-            // TODO: How to handle machines that were once entra joined but no longer are?
-            if (!machine.isAadJoined() && skipNonEntraJoinedDevices) {
-//                Logger.debug("Skipping non entra joined device: " + machine.getComputerDnsName(), customer.getId());
+            if (skipNonEntraJoinedDevices && !machine.isAadJoined() && machine.getVmMetadata() == null) {
                 continue;
             }
             //Logger.debug("Processing device " + machine.getComputerDnsName(), customer.getId());
             deviceRepository.insertDefenderDevice(customer.getId(), machine);
+            filtered.add(machine);
         }
 
+        Map<String, DefenderMachine> machineMap = filtered.stream().collect(Collectors.toMap(DefenderMachine::getId, m -> m));
         processExposures(customer, machineMap, job);
     }
 
