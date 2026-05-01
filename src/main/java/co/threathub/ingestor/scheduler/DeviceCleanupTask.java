@@ -56,7 +56,7 @@ public class DeviceCleanupTask implements ITask {
 
         Map<ConfigKey, ConfigEntry> config = ingestor.getConfigRepository().getAll();
         ConfigEntry skipNonEntraJoinedDevicesEntry = config.get(ConfigKey.SKIP_NON_ENTRA_JOINED_DEVICES);
-        boolean skipNonEntraJoinedDevices = skipNonEntraJoinedDevicesEntry == null || skipNonEntraJoinedDevicesEntry.getValue().equalsIgnoreCase("true");
+        boolean skipNonEntraJoinedDevices = skipNonEntraJoinedDevicesEntry != null && skipNonEntraJoinedDevicesEntry.getValue().equalsIgnoreCase("true");
 
         if (!skipNonEntraJoinedDevices) {
             Logger.info("Skipping task as it is disabled in the config");
@@ -72,10 +72,7 @@ public class DeviceCleanupTask implements ITask {
 
                 for (DefenderMachine machine : machines) {
                     if (machine.getComputerDnsName() != null) {
-                        defenderLookup.put(
-                                machine.getComputerDnsName().toLowerCase(),
-                                machine
-                        );
+                        defenderLookup.put(machine.getComputerDnsName().toLowerCase(), machine);
                     }
                 }
             }

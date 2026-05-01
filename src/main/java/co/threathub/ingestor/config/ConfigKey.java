@@ -37,7 +37,8 @@ public enum ConfigKey {
     EXTERNAL_LOG_FORWARDING(false),
     SEND_EXTERNAL_HEARTBEAT(false),
 
-    SKIP_NON_ENTRA_JOINED_DEVICES(true);
+    SKIP_NON_ENTRA_JOINED_DEVICES(true),
+    DELETE_DEVICES_OLDER_THAN(30);
 
     private final Object defaultValue;
 }

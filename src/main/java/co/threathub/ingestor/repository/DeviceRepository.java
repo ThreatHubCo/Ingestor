@@ -78,29 +78,6 @@ public class DeviceRepository {
     }
 
     /**
-     * Returns a list of all devices that are NOT entra joined at the
-     * time of the last sync.
-     *
-     * @return List of devices
-     */
-    public List<Device> getDevicesNotEntraJoined() {
-        List<Device> list = new ArrayList<>();
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT * FROM devices WHERE is_aad_joined = FALSE")) {
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    list.add(Device.of(rs));
-                }
-            }
-        } catch (SQLException ex) {
-            throw new DatabaseException("Failed to fetch devices", ex);
-        }
-        return list;
-    }
-
-    /**
      * Delete a device from the database.
      *
      * @param id The device ID
