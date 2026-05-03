@@ -33,7 +33,7 @@ public class ConfigEntry {
             case BOOLEAN -> Boolean.parseBoolean(value);
             case JSON -> value;
             case STRING -> value;
-            case INTEGER -> Integer.valueOf(value);
+            case NUMBER -> Integer.valueOf(value);
         };
     }
 }

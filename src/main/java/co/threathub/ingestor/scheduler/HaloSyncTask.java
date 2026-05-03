@@ -50,6 +50,8 @@ public class HaloSyncTask implements ITask {
     public void syncAllTickets(ScanJob job) {
         Logger.info("Starting task");
 
+        long start = System.currentTimeMillis();
+
         job.updateProgress(0, "Starting Halo ticket sync");
 
         try {
@@ -71,7 +73,10 @@ public class HaloSyncTask implements ITask {
             throw new RuntimeException(ex);
         }
 
-        Logger.info("Finished task");
+        long end = System.currentTimeMillis();
+        long duration = end - start;
+
+        Logger.info(String.format("Finished task (Took %dms / %.2fs)", duration, duration / 1000f));
     }
 
     public void syncSingleCustomer(ScanJob job) throws Exception {
@@ -84,7 +89,9 @@ public class HaloSyncTask implements ITask {
     }
 
     public void syncSingleCustomer(Customer customer, ScanJob job) {
-        Logger.info("Starting Halo sync for customer: " + customer.getName());
+        Logger.info("Starting Halo sync for customer: " + customer.getName(), customer.getId());
+
+        long start = System.currentTimeMillis();
 
         job.updateProgress(0, "Starting Halo sync for " + customer.getName());
 
@@ -102,11 +109,14 @@ public class HaloSyncTask implements ITask {
             job.updateProgress(100, "Halo sync complete for " + customer.getName());
 
         } catch (IOException | InterruptedException ex) {
-            Logger.error("Halo sync failed for customer " + customer.getName(), ex);
+            Logger.error("Halo sync failed for customer " + customer.getName(), ex, customer.getId());
             job.updateProgress(100, "Failed: " + ex.getMessage());
             throw new RuntimeException(ex);
         }
 
-        Logger.info("Finished Halo sync for customer: " + customer.getName());
+        long end = System.currentTimeMillis();
+        long duration = end - start;
+
+        Logger.info(String.format("Finished Halo sync task (Took %dms / %.2fs)", duration, duration / 1000f), customer.getId());
     }
 }

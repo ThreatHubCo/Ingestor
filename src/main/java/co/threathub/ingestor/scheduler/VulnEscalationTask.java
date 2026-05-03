@@ -53,11 +53,11 @@ public class VulnEscalationTask implements ITask {
         try {
             ingestor.getScriptManager().executeScript(ScriptType.SOFTWARE_ESCALATION);
         } catch (Exception ex) {
-            Logger.error("Failed to execute software execution script", ex);
+            Logger.error("Failed to execute software escalation script", ex);
         }
 
         long end = System.currentTimeMillis();
         long duration = end - start;
-        Logger.info(String.format("Finished task (Took %dms)", duration));
+        Logger.info(String.format("Finished task (Took %dms / %.2fs)", duration, duration / 1000f));
     }
 }

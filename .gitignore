@@ -1,5 +1,5 @@
-scripts/
-templates/
+/scripts/
+/templates/
 
 target/
 !.mvn/wrapper/maven-wrapper.jar

@@ -4,7 +4,7 @@ public enum ConfigValueType {
     STRING,
     BOOLEAN,
     JSON,
-    INTEGER;
+    NUMBER;
 
     public static ConfigValueType of(String value) {
         return ConfigValueType.valueOf(value.toUpperCase());

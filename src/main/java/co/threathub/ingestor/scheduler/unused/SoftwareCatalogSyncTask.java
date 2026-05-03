@@ -52,7 +52,7 @@ public class SoftwareCatalogSyncTask implements ITask {
 
             try (Connection conn = ingestor.getDataSource().getConnection()) {
                 for (DefenderSoftware software : allSoftware) {
-                   repo.insertOrGetSoftwareOld(conn, software);
+//                   repo.insertOrGetSoftwareOld(conn, software);
                 }
 
                 long end = System.currentTimeMillis();

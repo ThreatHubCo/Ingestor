@@ -14,6 +14,13 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>opencollab-snapshots</id>
+            <url>https://repo.opencollab.dev/maven-snapshots/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -61,6 +68,16 @@
             <artifactId>lombok</artifactId>
             <version>1.18.22</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.cloudburstmc.fastutil.maps</groupId>
+            <artifactId>object-int-maps</artifactId>
+            <version>8.5.15-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.cloudburstmc.fastutil.maps</groupId>
+            <artifactId>int-object-maps</artifactId>
+            <version>8.5.15-SNAPSHOT</version>
         </dependency>
     </dependencies>
 

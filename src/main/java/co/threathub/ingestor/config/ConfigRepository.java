@@ -15,8 +15,7 @@ public class ConfigRepository {
 
     public ConfigEntry upsert(ConfigKey key, String value, ConfigValueType type) {
         String sql = """
-            INSERT INTO config (`key`, value, `type`, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO config (`key`, value, `type`, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 value = VALUES(value),
                 type = VALUES(type),
@@ -36,10 +35,9 @@ public class ConfigRepository {
 
             ps.executeUpdate();
 
-            try (PreparedStatement select = conn.prepareStatement(
-                    "SELECT * FROM config WHERE key = ?"
-            )) {
+            try (PreparedStatement select = conn.prepareStatement("SELECT * FROM config WHERE `key` = ?")) {
                 select.setString(1, key.name());
+
                 try (ResultSet rs = select.executeQuery()) {
                     if (rs.next()) {
                         return ConfigEntry.of(rs);
@@ -58,18 +56,17 @@ public class ConfigRepository {
      */
     public Map<ConfigKey, ConfigEntry> getAll() {
         Map<ConfigKey, ConfigEntry> map = new EnumMap<>(ConfigKey.class);
+        String sql = "SELECT * FROM config";
 
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT * FROM config");
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                ConfigEntry entry = ConfigEntry.of(rs);
-                map.put(entry.getKey(), entry);
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ConfigEntry entry = ConfigEntry.of(rs);
+                    map.put(entry.getKey(), entry);
+                }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
-            throw new RuntimeException(ex);
+            throw new DatabaseException("Failed to return config values", ex);
         }
         return map;
     }
