@@ -80,7 +80,7 @@ public class DeviceCatalogSyncTask implements ITask {
         }
 
         long duration = System.currentTimeMillis() - start;
-        Logger.info(String.format("Finished device sync task (Took %dms)", duration));
+        Logger.info(String.format("Finished device sync task (Took %dms / %.2fs)", duration, duration / 1000f));
     }
 
     public void syncTenant(ScanJob job) throws Exception {

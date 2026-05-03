@@ -9,11 +9,32 @@ import lombok.RequiredArgsConstructor;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 public class DeviceRepository {
     private final HikariDataSource dataSource;
+
+    /**
+     * Loads all device Machine ID + Database ID from the database into memory.
+     *
+     * @param conn The sql connection to re-use
+     * @return A map of defender machine ids to Database ids
+     */
+    public Map<String, Integer> loadAllDeviceIds(Connection conn) throws SQLException {
+        String sql = "SELECT id, machine_id FROM devices";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            Map<String, Integer> result = new HashMap<>();
+
+            while (rs.next()) {
+                result.put(rs.getString("machine_id"), rs.getInt("id"));
+            }
+            return result;
+        }
+    }
 
     /**
      * Inserts a device into the database based on data from Defender.

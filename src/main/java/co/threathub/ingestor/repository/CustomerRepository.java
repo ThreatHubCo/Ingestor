@@ -18,18 +18,19 @@ public class CustomerRepository {
      */
     public List<Customer> getAllCustomers() {
         List<Customer> list = new ArrayList<>();
+        String sql = "SELECT * FROM customers WHERE deleted_at IS NULL AND tenant_id IS NOT NULL";
 
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT * FROM customers WHERE deleted_at IS NULL AND tenant_id IS NOT NULL");
+             PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 list.add(Customer.of(rs));
             }
+            return list;
         } catch (SQLException ex) {
             throw new DatabaseException("Failed to fetch customers", ex);
         }
-        return list;
     }
 
     /**
@@ -40,9 +41,9 @@ public class CustomerRepository {
      * @return The customer information
      */
     public Customer getCustomerById(int id) {
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL AND tenant_id IS NOT NULL")) {
+        String sql = "SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL AND tenant_id IS NOT NULL";
 
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
 
             try (ResultSet rs = ps.executeQuery()) {

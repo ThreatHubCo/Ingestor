@@ -12,8 +12,10 @@ import co.threathub.ingestor.job.model.ScanJob;
 import co.threathub.ingestor.log.Logger;
 import co.threathub.ingestor.model.Customer;
 import co.threathub.ingestor.model.DeviceVulnKey;
+import co.threathub.ingestor.model.VulnSoftwareRow;
 import co.threathub.ingestor.repository.*;
 import co.threathub.ingestor.util.Utils;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -66,7 +68,7 @@ public class VulnCustomerExposureSyncTask implements ITask {
                 long endCust = System.currentTimeMillis();
                 long durationCust = endCust - startCust;
 
-                Logger.info(String.format("Finished sync for customer %s (Took %dms)", customer.getName(), durationCust));
+                Logger.info(String.format("Finished sync for customer %s (Took %dms / %.2fs)", customer.getName(), durationCust, durationCust / 1000f));
             } catch (Exception e) {
                 Logger.error(String.format("Sync failed for %s", customer.getName()), e, customer.getId());
             }
@@ -75,7 +77,7 @@ public class VulnCustomerExposureSyncTask implements ITask {
         long end = System.currentTimeMillis();
         long duration = end - start;
 
-        Logger.info(String.format("Finished task (Took %dms)", duration));
+        Logger.info(String.format("Finished task (Took %dms / %.2fs)", duration, duration / 1000f));
     }
 
     public void syncTenant(ScanJob job) throws Exception {
@@ -127,16 +129,27 @@ public class VulnCustomerExposureSyncTask implements ITask {
         VulnerabilityRepository vulnRepo = ingestor.getVulnerabilityRepository();
         SoftwareRepository softwareRepo = ingestor.getSoftwareRepository();
         DeviceVulnerabilityRepository dvRepo = ingestor.getDeviceVulnerabilityRepository();
+        DeviceRepository deviceRepo = ingestor.getDeviceRepository();
 
         Set<DeviceVulnKey> currentSnapshot = ConcurrentHashMap.newKeySet();
         AtomicInteger page = new AtomicInteger();
 
         try (Connection conn = ingestor.getDataSource().getConnection()) {
-            mvService.streamAllForTenant(customer.getTenantId(), batch -> {
+            conn.setAutoCommit(false);
+
+            Object2IntMap<String> vulnCache = vulnRepo.loadAllCveIds(conn);
+            Object2IntMap<String> softwareCache = softwareRepo.loadAllSoftwareIds(conn);
+
+            Logger.debug("Fetching vulnerability information from Defender", customerId);
+
+            List<VulnSoftwareRow> batchRows = new ArrayList<>();
+            int BATCH_SIZE = 1000;
+
+            mvService.streamAllForTenant(customer.getTenantId(), (batch) -> {
                 try {
                     int currentPage = page.incrementAndGet();
 
-                    Logger.info("Processing page " + currentPage);
+                    Logger.debug("Processing page " + currentPage);
                     job.updateProgress(0, "Processing page " + currentPage);
 
                     for (DefenderMachineVulnerability mv : batch) {
@@ -149,25 +162,40 @@ public class VulnCustomerExposureSyncTask implements ITask {
                             continue;
                         }
 
-                        int vulnId = vulnRepo.getVulnerabilityIdByCve(mv.getCveId());
+                        int vulnId = vulnCache.getInt(mv.getCveId());
 
-                        if (vulnId == -1) {
-                            Logger.debug("vulnId is null", customerId);
+                        if (vulnId == 0) {
+                            Logger.debug("vulnId is null: " + mv.getCveId(), customerId);
                             continue;
                         }
 
-                        int softwareId = softwareRepo.resolveSoftwareId(conn, mv.getProductName(), mv.getProductVendor());
+                        int softwareId = softwareCache.getInt(mv.getProductName() + ":" + mv.getProductVendor());
 
-                        vulnRepo.insertVulnerabilitySoftware(conn, vulnId, softwareId); // Global
-                        vulnRepo.insertCustomerVulnerabilitySoftware(conn, customerId, vulnId, softwareId); // Tenant specific
+                        if (softwareId == 0) {
+                            softwareId = softwareRepo.insertSoftware(conn, mv.getProductName(), mv.getProductVendor());
+                        }
 
+                        batchRows.add(new VulnSoftwareRow(customerId, vulnId, softwareId));
                         currentSnapshot.add(new DeviceVulnKey(mv.getMachineId(), vulnId, softwareId));
+
+                        if (batchRows.size() >= BATCH_SIZE) {
+                            vulnRepo.batchInsertVulnAndCustomerSoftware(conn, batchRows);
+                            conn.commit();
+                            batchRows.clear();
+                        }
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Logger.error("Error occurred while syncing tenant", ex);
                 }
             });
+
+            if (!batchRows.isEmpty()) {
+                vulnRepo.batchInsertVulnAndCustomerSoftware(conn, batchRows);
+                conn.commit();
+            }
+
+            Logger.debug("Comparing and updating database", customerId);
 
             // Load previous device vulnerabilities state from the database
             Set<DeviceVulnKey> previousState = dvRepo.loadActiveState(conn, customerId);
@@ -179,8 +207,10 @@ public class VulnCustomerExposureSyncTask implements ITask {
             Set<DeviceVulnKey> toResolve = new HashSet<>(previousState);
             toResolve.removeAll(currentSnapshot);
 
+            Map<String, Integer> deviceCache = deviceRepo.loadAllDeviceIds(conn);
+
             // Insert or resolve vulnerabilities
-            dvRepo.insertNewVulnerabilities(conn, customerId, toInsert);
+            dvRepo.insertNewVulnerabilities(conn, customerId, toInsert, deviceCache);
             dvRepo.resolveVulnerabilities(conn, customerId, toResolve);
         }
     }

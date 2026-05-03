@@ -6,6 +6,8 @@ import co.threathub.ingestor.repository.exception.DatabaseException;
 import com.zaxxer.hikari.HikariDataSource;
 import co.threathub.ingestor.defender.model.individual.DefenderMachineVulnerability;
 import co.threathub.ingestor.defender.model.individual.DefenderSoftware;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import lombok.RequiredArgsConstructor;
 
 import java.sql.*;
@@ -16,6 +18,26 @@ import java.util.HashMap;
 @RequiredArgsConstructor
 public class SoftwareRepository {
     private final HikariDataSource dataSource;
+
+    /**
+     * Loads all software Name & Vendor + Database ID from the database into memory.
+     *
+     * @param conn The sql connection to re-use
+     * @return A map of software keys (name & vendor) to Database ids
+     */
+    public Object2IntMap<String> loadAllSoftwareIds(Connection conn) throws SQLException {
+        String sql = "SELECT id, name, vendor FROM software";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            Object2IntMap<String> result = new Object2IntOpenHashMap<>();
+
+            while (rs.next()) {
+                String key = rs.getString("name") + ":" + rs.getString("vendor");
+                result.put(key, rs.getInt("id"));
+            }
+            return result;
+        }
+    }
 
     /**
      * Retrieve information about a software with the given ID.
@@ -40,21 +62,7 @@ public class SoftwareRepository {
         }
     }
 
-    public int resolveSoftwareId(Connection conn, String name, String vendor) throws SQLException {
-        String selectSql = "SELECT id FROM software WHERE name = ? AND (vendor <=> ?)";
-
-        try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
-            ps.setString(1, name);
-            ps.setString(2, vendor);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                }
-            }
-        }
-
-        // Insert if doesn't exist
+    public int insertSoftware(Connection conn, String name, String vendor) throws SQLException {
         String insertSql = "INSERT INTO software (name, vendor) VALUES (?, ?)";
 
         try (PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
@@ -63,9 +71,11 @@ public class SoftwareRepository {
             ps.executeUpdate();
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) return rs.getInt(1);
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                throw new SQLException("Failed to insert software");
             }
         }
-        throw new SQLException("Failed to resolve software");
     }
 }

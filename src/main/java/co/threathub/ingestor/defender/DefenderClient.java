@@ -15,9 +15,13 @@ import co.threathub.ingestor.util.Utils;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +40,8 @@ public class DefenderClient {
     }
 
     public String clientTenantAuth(String tenantId) throws IOException, InterruptedException {
+        Logger.debug("Authenticating to tenant");
+
         Map<ConfigKey, ConfigEntry> config = configRepository.getAll();
 
         ConfigEntry entraAppId = config.get(ConfigKey.ENTRA_BACKEND_CLIENT_ID);
@@ -90,8 +96,9 @@ public class DefenderClient {
 
             HttpResponse<String> response = Utils.HTTP.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode() != 200)
+            if (response.statusCode() != 200) {
                 throw new IllegalStateException(response.body());
+            }
 
             DefenderVulnerabilities page = Utils.GSON.fromJson(response.body(), DefenderVulnerabilities.class);
             List<DefenderVulnerability> vulns = page.getVulnerabilities();
@@ -112,6 +119,8 @@ public class DefenderClient {
      * to populate the database with ALL vulnerabilities, then subsequent requests can call
      * this method to only return what's changed.
      *
+     * TODO: This doesn't seem to work as expected
+     *
      * @param token The access token for the home tenant
      * @param since The time to check since last check
      * @param pageConsumer A callback for each page of vulnerabilities
@@ -119,10 +128,14 @@ public class DefenderClient {
     public void streamAllVulnerabilitiesSince(String token, Instant since, Consumer<List<DefenderVulnerability>> pageConsumer) throws IOException, InterruptedException {
         int skip = 0;
 
-        String isoSince = java.time.format.DateTimeFormatter.ISO_INSTANT.format(since);
+        String isoSince = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                .withZone(ZoneOffset.UTC)
+                .format(since);
 
         while (true) {
-            String url = BASE_URL + "/api/vulnerabilities?$filter=updatedAt gt " + isoSince + "&$skip=" + skip;
+            String url = BASE_URL + "/api/vulnerabilities"
+                    + "?$filter=" + URLEncoder.encode("updatedOn gt " + isoSince, StandardCharsets.UTF_8)
+                    + "&$skip=" + skip;
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))

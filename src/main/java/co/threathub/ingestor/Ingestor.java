@@ -65,6 +65,7 @@ public class Ingestor {
     private VulnEscalationTask vulnEscalationTask;
     private DeviceCatalogSyncTask deviceCatalogSyncTask;
     private DeviceCleanupTask deviceCleanupTask;
+    private RedisCleanupTask redisCleanupTask;
 
     private ConfigFile configFile;
 
@@ -128,8 +129,8 @@ public class Ingestor {
         this.defenderClient = new DefenderClient(configFile, configRepository);
         this.haloClient = new HaloClient(configRepository, remediationRepository, templateManager);
 
-        this.vulnerabilityService = new VulnerabilityService(defenderClient, customerRepository);
-        this.machineVulnerabilityService = new MachineVulnerabilityService(defenderClient, customerRepository);
+        this.vulnerabilityService = new VulnerabilityService(defenderClient);
+        this.machineVulnerabilityService = new MachineVulnerabilityService(defenderClient);
         this.deviceService = new DeviceService(defenderClient);
         this.softwareService = new SoftwareService(defenderClient);
 
@@ -140,6 +141,7 @@ public class Ingestor {
         this.securityRecSyncTask = new SecurityRecSyncTask(this);
         this.haloSyncTask = new HaloSyncTask(this);
         this.deviceCleanupTask = new DeviceCleanupTask(this);
+        this.redisCleanupTask = new RedisCleanupTask(this);
 
         this.scriptManager = new JSManager(this);
 

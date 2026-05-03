@@ -58,6 +58,6 @@ public class VulnEscalationTask implements ITask {
 
         long end = System.currentTimeMillis();
         long duration = end - start;
-        Logger.info(String.format("Finished task (Took %dms)", duration));
+        Logger.info(String.format("Finished task (Took %dms / %.2fs)", duration, duration / 1000f));
     }
 }

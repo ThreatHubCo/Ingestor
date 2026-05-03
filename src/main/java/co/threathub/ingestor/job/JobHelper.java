@@ -3,6 +3,7 @@ package co.threathub.ingestor.job;
 import co.threathub.ingestor.job.model.NoOpScanJob;
 import co.threathub.ingestor.job.model.ScanJob;
 import co.threathub.ingestor.job.model.enums.ScanJobStatus;
+import co.threathub.ingestor.log.Logger;
 import co.threathub.ingestor.util.JedisManager;
 import co.threathub.ingestor.util.Utils;
 import lombok.extern.slf4j.Slf4j;
@@ -104,11 +105,11 @@ public class JobHelper {
                     jedis.hdel("threathub:jobs:all", jobId);
                     jedis.lrem("threathub:jobs:queue", 0, jobId);
 
-                    log.warn("Removed expired scan job {} (created at {})", jobId, job.getCreatedAt());
+                    Logger.debug(String.format("Removed expired scan job %s (created at %s)", jobId, job.getCreatedAt()));
                 }
             }
         } catch (Exception ex) {
-            log.error("Failed to cleanup expired jobs", ex);
+            Logger.error("Failed to cleanup expired jobs", ex);
         }
     }
 }
