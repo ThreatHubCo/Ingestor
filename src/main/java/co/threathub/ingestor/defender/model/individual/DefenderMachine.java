@@ -11,6 +11,10 @@ public class DefenderMachine implements IDefenderModel {
     private final String lastSeen;
     private final String osPlatform;
     private final String osProcessor;
+    private final String osArchitecture;
+    private final String osBuild;
+    private final String riskScore;
+    private final String managedBy;
     private final String version;
     private final boolean isAadJoined;
     private final String aadDeviceId;

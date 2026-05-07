@@ -63,7 +63,7 @@ public class SoftwareRepository {
     }
 
     public int insertSoftware(Connection conn, String name, String vendor) throws SQLException {
-        String insertSql = "INSERT INTO software (name, vendor) VALUES (?, ?)";
+        String insertSql = "INSERT IGNORE INTO software (name, vendor) VALUES (?, ?)";
 
         try (PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, name);

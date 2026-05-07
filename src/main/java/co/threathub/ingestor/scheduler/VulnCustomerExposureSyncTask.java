@@ -139,6 +139,7 @@ public class VulnCustomerExposureSyncTask implements ITask {
 
             Object2IntMap<String> vulnCache = vulnRepo.loadAllCveIds(conn);
             Object2IntMap<String> softwareCache = softwareRepo.loadAllSoftwareIds(conn);
+            Object2IntMap<String> deviceCache = deviceRepo.loadAllDeviceIds(conn);
 
             Logger.debug("Fetching vulnerability information from Defender", customerId);
 
@@ -165,7 +166,7 @@ public class VulnCustomerExposureSyncTask implements ITask {
                         int vulnId = vulnCache.getInt(mv.getCveId());
 
                         if (vulnId == 0) {
-                            Logger.debug("vulnId is null: " + mv.getCveId(), customerId);
+                            log.debug("vulnId is null: " + mv.getCveId(), customerId);
                             continue;
                         }
 
@@ -175,8 +176,14 @@ public class VulnCustomerExposureSyncTask implements ITask {
                             softwareId = softwareRepo.insertSoftware(conn, mv.getProductName(), mv.getProductVendor());
                         }
 
+                        int deviceId = deviceCache.getInt(mv.getMachineId());
+
+                        if (deviceId == 0) {
+                            continue;
+                        }
+
                         batchRows.add(new VulnSoftwareRow(customerId, vulnId, softwareId));
-                        currentSnapshot.add(new DeviceVulnKey(mv.getMachineId(), vulnId, softwareId));
+                        currentSnapshot.add(new DeviceVulnKey(deviceId, vulnId, softwareId));
 
                         if (batchRows.size() >= BATCH_SIZE) {
                             vulnRepo.batchInsertVulnAndCustomerSoftware(conn, batchRows);
@@ -207,11 +214,11 @@ public class VulnCustomerExposureSyncTask implements ITask {
             Set<DeviceVulnKey> toResolve = new HashSet<>(previousState);
             toResolve.removeAll(currentSnapshot);
 
-            Map<String, Integer> deviceCache = deviceRepo.loadAllDeviceIds(conn);
-
             // Insert or resolve vulnerabilities
-            dvRepo.insertNewVulnerabilities(conn, customerId, toInsert, deviceCache);
+            dvRepo.insertNewVulnerabilities(conn, customerId, toInsert);
             dvRepo.resolveVulnerabilities(conn, customerId, toResolve);
+
+            conn.commit();
         }
     }
 }
