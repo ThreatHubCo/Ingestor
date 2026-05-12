@@ -18,13 +18,21 @@ public class ConfigEntry {
     private Instant updatedAt;
 
     public static ConfigEntry of(ResultSet rs) throws SQLException {
+        ConfigKey key;
+
+        try {
+            key = ConfigKey.valueOf(rs.getString("key"));
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return null;
+        }
+
         return new ConfigEntry(
                 rs.getInt("id"),
-                ConfigKey.valueOf(rs.getString("key")),
+                key,
                 rs.getString("value"),
                 ConfigValueType.of(rs.getString("type")),
-                rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant()
+                rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toInstant() : null,
+                rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toInstant() : null
         );
     }
 

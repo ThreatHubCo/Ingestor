@@ -62,7 +62,10 @@ public class ConfigRepository {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     ConfigEntry entry = ConfigEntry.of(rs);
-                    map.put(entry.getKey(), entry);
+
+                    if (entry != null) {
+                        map.put(entry.getKey(), entry);
+                    }
                 }
             }
         } catch (Exception ex) {

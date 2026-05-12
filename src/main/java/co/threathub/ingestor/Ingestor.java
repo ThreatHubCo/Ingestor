@@ -16,6 +16,7 @@ import co.threathub.ingestor.defender.service.DeviceService;
 import co.threathub.ingestor.defender.service.MachineVulnerabilityService;
 import co.threathub.ingestor.defender.service.VulnerabilityService;
 import co.threathub.ingestor.util.*;
+import io.sentry.Sentry;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -67,19 +69,33 @@ public class Ingestor {
     private DeviceCleanupTask deviceCleanupTask;
     private RedisCleanupTask redisCleanupTask;
 
-    private ConfigFile configFile;
+    private static ConfigFile configFile;
 
     public static void main(String[] args) {
         try {
-            System.out.println("  _______ _                    _   _    _       _       _____                       _               ");
-            System.out.println(" |__   __| |                  | | | |  | |     | |     |_   _|                     | |              ");
-            System.out.println("    | |  | |__  _ __ ___  __ _| |_| |__| |_   _| |__     | |  _ __   __ _  ___  ___| |_ ___  _ __  ");
-            System.out.println("    | |  | '_ \\| '__/ _ \\/ _` | __|  __  | | | | '_ \\    | | | '_ \\ / _` |/ _ \\/ __| __/ _ \\| '__| ");
-            System.out.println("    | |  | | | | | |  __/ (_| | |_| |  | | |_| | |_) |  _| |_| | | | (_| |  __/\\__ \\ || (_) | |    ");
-            System.out.println("    |_|  |_| |_|_|  \\___|\\__,_|\\__|_|  |_|\\__,_|_.__/  |_____|_| |_|\\__, |\\___||___/\\__\\___/|_|    ");
-            System.out.println("                                                                     __/ |                             ");
-            System.out.println("                                                                    |___/                              ");
-            System.out.println("ThreatHub Ingestor v" + Utils.VERSION + " by Luke (luke@glitch.je)\n");
+            if (!List.of(args).contains("--hide-startup-message")) {
+                System.out.println("  _______ _                    _   _    _       _       _____                       _               ");
+                System.out.println(" |__   __| |                  | | | |  | |     | |     |_   _|                     | |              ");
+                System.out.println("    | |  | |__  _ __ ___  __ _| |_| |__| |_   _| |__     | |  _ __   __ _  ___  ___| |_ ___  _ __  ");
+                System.out.println("    | |  | '_ \\| '__/ _ \\/ _` | __|  __  | | | | '_ \\    | | | '_ \\ / _` |/ _ \\/ __| __/ _ \\| '__| ");
+                System.out.println("    | |  | | | | | |  __/ (_| | |_| |  | | |_| | |_) |  _| |_| | | | (_| |  __/\\__ \\ || (_) | |    ");
+                System.out.println("    |_|  |_| |_|_|  \\___|\\__,_|\\__|_|  |_|\\__,_|_.__/  |_____|_| |_|\\__, |\\___||___/\\__\\___/|_|    ");
+                System.out.println("                                                                     __/ |                             ");
+                System.out.println("                                                                    |___/                              ");
+                System.out.println("ThreatHub Ingestor v" + Utils.VERSION + " by Luke (luke@glitch.je)\n");
+            }
+
+            // Load and validate config.properties
+            configFile = new ConfigFile();
+            validateConfig();
+
+            try {
+                // Init Sentry as soon as possible
+                initSentry();
+            } catch (Exception ex) {
+                System.out.println("Failed to init Sentry");
+                ex.printStackTrace();
+            }
 
             Ingestor ingestor = new Ingestor();
             ingestor.run();
@@ -95,10 +111,6 @@ public class Ingestor {
     public void run() throws IOException {
         INSTANCE = this;
 
-        // Load and validate config.properties
-        this.configFile = new ConfigFile();
-        validateConfig(configFile);
-
         // Ensure scripts and templates directories exist
         ensureDirectoriesExist();
 
@@ -107,7 +119,7 @@ public class Ingestor {
 
         // Init logging
         this.backendLogRepository = new BackendLogRepository(dataSource);
-        Logger.init(backendLogRepository, reportingService);
+        Logger.init(backendLogRepository);
 
         Logger.info("Initializing...");
 
@@ -169,7 +181,7 @@ public class Ingestor {
         dataSource.setMaxLifetime(configFile.getMaxLifetime());
     }
 
-    private void validateConfig(ConfigFile configFile) {
+    private static void validateConfig() {
         if (configFile.getUrl() == null || configFile.getUrl().isEmpty() ||
                 configFile.getUsername() == null || configFile.getUsername().isEmpty() ||
                 configFile.getPassword() == null || configFile.getPassword().isEmpty()
@@ -193,6 +205,26 @@ public class Ingestor {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void initSentry() {
+        if (!configFile.isSentryEnabled()) {
+            return;
+        }
+
+        String dsnUrl = configFile.getSentryDsnUrl();
+
+        if (dsnUrl == null || dsnUrl.isEmpty()) {
+            System.out.println("Sentry is enabled in the config but DSN URL is invalid");
+            return;
+        }
+
+       Sentry.init(options -> {
+            options.setDsn(dsnUrl);
+            options.getLogs().setEnabled(true);
+        });
+
+        System.out.println("Sentry enabled");
     }
 
     public static Ingestor getInstance() {

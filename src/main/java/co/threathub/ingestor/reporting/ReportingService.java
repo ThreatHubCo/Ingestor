@@ -7,6 +7,7 @@ import co.threathub.ingestor.config.ConfigValueType;
 import co.threathub.ingestor.log.BackendLog;
 import co.threathub.ingestor.log.Logger;
 import co.threathub.ingestor.util.Utils;
+import io.sentry.Sentry;
 import lombok.Getter;
 
 import java.net.URI;
@@ -21,10 +22,8 @@ public class ReportingService {
 
     private static final String DEFAULT_BASE_URL = "https://api.threathub.co/v1/reporting";
     private static final String HEARTBEAT_ENDPOINT = "/heartbeat";
-    private static final String LOGS_ENDPOINT = "/logs";
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    private final Queue<BackendLog> externalLogQueue = new ConcurrentLinkedQueue<>();
 
     @Getter
     private String instanceId;
@@ -35,7 +34,6 @@ public class ReportingService {
         try {
             this.instanceId = initInstanceId();
 
-            scheduler.scheduleAtFixedRate(this::flushExternalLogs, 5, 5, TimeUnit.SECONDS);
             scheduler.scheduleAtFixedRate(this::sendHeartbeat, 30, 30, TimeUnit.SECONDS);
 
             Logger.info("Reporting service initialized");
@@ -55,49 +53,6 @@ public class ReportingService {
             return uuid;
         }
         return instanceIdEntry.getValue();
-    }
-
-    private void flushExternalLogs() {
-        if (externalLogQueue.isEmpty()) {
-            return;
-        }
-        if (!isExternalForwardingEnabled()) {
-            return;
-        }
-        List<BackendLog> batch = new ArrayList<>();
-
-        while (!externalLogQueue.isEmpty()) {
-            batch.add(externalLogQueue.poll());
-        }
-        sendLogs(batch);
-    }
-
-    public void sendLogs(List<BackendLog> logs) {
-        if (logs.isEmpty() || instanceId == null) {
-            return;
-        }
-        try {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("instanceId", instanceId);
-            payload.put("logs", logs);
-
-            String body = Utils.GSON.toJson(payload);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(DEFAULT_BASE_URL + LOGS_ENDPOINT))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-
-            Utils.HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(response -> {
-                        if (response.statusCode() >= 300) {
-                            Logger.warn("Failed to forward logs externally: " + response.body());
-                        }
-                    });
-        } catch (Exception ex) {
-            Logger.error("Error sending external logs", ex);
-        }
     }
 
     private void sendHeartbeat() {
@@ -130,16 +85,6 @@ public class ReportingService {
         } catch (Exception ex) {
             Logger.error("Failed to send heartbeat", ex);
         }
-    }
-
-    public void queueLog(BackendLog log) {
-        externalLogQueue.add(log);
-    }
-
-    public boolean isExternalForwardingEnabled() {
-        Map<ConfigKey, ConfigEntry> config = ingestor.getConfigRepository().getAll();
-        ConfigEntry entry = config.get(ConfigKey.EXTERNAL_LOG_FORWARDING);
-        return entry != null && entry.getValue().equalsIgnoreCase("true");
     }
 
     public boolean isHeartbeatSendingEnabled() {

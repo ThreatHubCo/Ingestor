@@ -1,15 +1,12 @@
 package co.threathub.ingestor.log;
 
-import co.threathub.ingestor.reporting.ReportingService;
 import org.slf4j.LoggerFactory;
 
 public final class Logger {
     private static BackendLogRepository repository;
-    private static ReportingService reportingService;
 
-    public static void init(BackendLogRepository repo, ReportingService reportingService) {
+    public static void init(BackendLogRepository repo) {
         Logger.repository = repo;
-        Logger.reportingService = reportingService;
     }
 
     // Automatically resolve calling class
@@ -44,9 +41,6 @@ public final class Logger {
 
         if (repository != null) {
             repository.insert(log);
-        }
-        if (reportingService != null) {
-            reportingService.queueLog(log);
         }
     }
 

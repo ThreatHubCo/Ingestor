@@ -74,7 +74,7 @@ public class SoftwareRepository {
                 if (rs.next()) {
                     return rs.getInt(1);
                 }
-                throw new SQLException("Failed to insert software");
+                throw new SQLException("Failed to insert software: " + name + " : " + vendor);
             }
         }
     }
