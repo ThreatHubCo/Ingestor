@@ -32,7 +32,7 @@ public class SoftwareRepository {
             Object2IntMap<String> result = new Object2IntOpenHashMap<>();
 
             while (rs.next()) {
-                String key = rs.getString("name") + ":" + rs.getString("vendor");
+                String key = rs.getString("name").toLowerCase() + ":" + rs.getString("vendor").toLowerCase();
                 result.put(key, rs.getInt("id"));
             }
             return result;
@@ -73,6 +73,17 @@ public class SoftwareRepository {
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
                     return rs.getInt(1);
+                }
+
+                try (PreparedStatement ps2 = conn.prepareStatement("SELECT id FROM software WHERE name = ? AND vendor = ?")) {
+                    ps2.setString(1, name);
+                    ps2.setString(2, vendor);
+
+                    try (ResultSet rs2 = ps2.executeQuery()) {
+                        if (rs2.next()) {
+                            return rs2.getInt(1);
+                        }
+                    }
                 }
                 throw new SQLException("Failed to insert software: " + name + " : " + vendor);
             }
